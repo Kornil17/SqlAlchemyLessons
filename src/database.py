@@ -3,7 +3,7 @@ from typing import Annotated, Callable
 from sqlalchemy import String, create_engine, text, Table, Column, Integer, MetaData, insert, select, update, func, \
     cast, and_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker, Mapped, MappedColumn
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker, Mapped, MappedColumn, aliased
 from config import settings
 from models import metadata, Base, Users, ResumeOrm
 
@@ -109,6 +109,43 @@ class DB:
         with session() as conn:
             result = conn.execute(query)
             print(*result.first())
+
+
+    @staticmethod
+    def join_cte_subquery_window_func():
+        with session() as conn:
+            r = aliased(ResumeOrm)
+            u = aliased(Users)
+            subq = (
+                select(
+                    r,
+                    u,
+                    cast(func.avg(r.salary).over(partition_by=id), Integer).label('avg_compensation')
+                )
+                .select_from(r)
+                .join(r.worker_id == u.id).subquery('helper1')
+            )
+            cte = (
+                select(
+                    subq.c.id,
+                    subq.c.worker_id,
+                    subq.c.salary,
+                    subq.c.username
+                )
+                .cte('helper2')
+
+            )
+            query = (
+                select(cte)
+                .order_by(cte.c.id.desc())
+            )
+            print(query.compile(compile_kwargs={"literal_binds": True}))
+            res = conn.execute(query)
+            print(res.all())
+
+
+
+
 if __name__ == "__main__":
     # DB.sync_connect()
     # DB.create_tables()
@@ -117,4 +154,5 @@ if __name__ == "__main__":
     # DB.update_data_update_method(1, 'Dima')
     # DB.update_data_orm(4, 'Dima')
     # DB.insert_data_orm(ResumeOrm, {"title":"Python developer", "salary":250000, "worker_id":1})
-    DB.select_data_resume()
+    # DB.select_data_resume()
+    DB.join_cte_subquery_window_func()

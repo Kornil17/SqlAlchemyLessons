@@ -32,5 +32,21 @@ class ResumeOrm(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc', now())"))
 
 
+class VacancyORM:
+    """
+    Table many to many relationship
+    """
+    __tablename__ = 'vacancy'
+
+    resume_id: Mapped[int] = mapped_column(
+        ForeignKey(ResumeOrm.id, ondelete='CASCADE'),
+        primary_key=True
+    )
+    worker_id: Mapped[int] = mapped_column(
+        ForeignKey(Users.id, ondelete='CASCADE'),
+        primary_key=True
+    )
+
+
 
 
